@@ -22,3 +22,7 @@ vym-legacy
 
 # Temporary build dirs
 build/
+build_deb_workspace/
+
+# Debian packages
+*.deb
