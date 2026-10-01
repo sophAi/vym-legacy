@@ -1,0 +1,70 @@
+#!/usr/bin/perl
+#
+# Script to convert vym files to arbitrary formats
+# Using xml stylesheets
+#
+# written by Uwe Drechsel	<vym@insilmaril.de>
+#
+
+my $version="0.1";
+my $PARSER="xsltproc";
+my $OUTDIR="";
+my $INPUTDIR="";
+my $XSL="vym2html.xsl";
+
+
+use Getopt::Long;
+GetOptions (
+    "o=s" => \$opt_outdir,
+	"x=s"=> \$opt_xst,
+    "h!" => \$opt_usage ) || usage ();
+
+
+
+if ($opt_usage) {
+    $0 =~ s#.*/##g;
+    print <<Helpende;
+    
+exportvym	written by Uwe Drechsel - Version $version
+
+usage: $0 [-h] VYMFILE
+
+...TODO...
+
+Helpende
+}
+
+
+if ($opt_xst) { $XST=$opt_XST; }
+if ($opt_outdir) { $OUTDIR="$opt_outdir/"; }
+if ($#ARGV <0) 
+{
+	die "not enough parameters given";
+} else
+{
+	# get MAPNAME
+	$MAPNAME=pop(@ARGV);
+	if ($MAPNAME=~/\//) 
+	{
+		# Get inputdir from path
+		$MAPNAME=~/(.*\/)(.*)/;
+		$INPUTDIR=$1;	
+		$MAPNAME=$2;	
+	}
+	if ($MAPNAME=~/(.*)(\.xml)/) { $MAPNAME=$1;}
+}
+
+transform();
+
+exit;
+
+########################################################
+sub transform {
+########################################################
+	my $command="$PARSER -o $OUTDIR$MAPNAME.html $XSL $INPUTDIR$MAPNAME.xml"; 
+	print "$command\n";
+	system ($command);
+}
+	
+
+

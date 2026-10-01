@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Look for running konquerors and notify them of changed bookmarks file
+dcop | grep konqueror- |  xargs -iKONQUI dcop KONQUI KBookmarkManager-$HOME/.kde/share/apps/konqueror/bookmarks.xml notifyCompleteChange "dcop"
+
+
+# And now the same using QDBUS in KDE 4:
+
+qdbus| grep konqueror- |  xargs -iOBJECT qdbus OBJECT /KBookmarkManager/konqueror org.kde.KIO.KBookmarkManager.notifyCompleteChange

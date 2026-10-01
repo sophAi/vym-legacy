@@ -1,0 +1,64 @@
+#ifndef IMPORTS_H
+#define IMPORTS_H
+
+#include <qdir.h>
+#include <qstring.h>
+#include <iostream>
+
+#include "mapcenterobj.h"
+#include "settings.h"
+
+
+///////////////////////////////////////////////////////////////////////
+
+class ImportBase
+{
+public:
+	ImportBase();
+	virtual ~ImportBase();
+	virtual void setDir(const QString &);
+	virtual void setFile(const QString &);
+	virtual void setMapCenter (MapCenterObj*);
+	virtual bool transform();
+	virtual QString getTransformedFile();
+protected:
+	QDir tmpDir;
+	QString inputDir;
+	QString inputFile;
+	MapCenterObj *mapCenter;
+	QString transformedFile;
+	
+};
+
+///////////////////////////////////////////////////////////////////////
+class ImportKDE3Bookmarks:public ImportBase
+{
+public:
+	bool transform();
+};	
+
+class ImportKDE4Bookmarks:public ImportBase
+{
+public:
+	bool transform();
+};	
+
+
+///////////////////////////////////////////////////////////////////////
+class ImportFirefoxBookmarks:public ImportBase
+{
+public:
+	bool transform();
+};	
+
+
+///////////////////////////////////////////////////////////////////////
+class ImportMM:public ImportBase
+{
+public:
+	bool transform();
+};	
+
+
+
+#endif

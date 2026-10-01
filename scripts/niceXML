@@ -1,0 +1,64 @@
+#!/usr/bin/perl 
+#
+# Hack to make single-line XML file  easier to read by using indention
+#
+# (c) Uwe Drechsel
+#
+# License: GPL 
+
+my $filename =shift;
+my $s;
+open (INFILE, "<$filename") ||
+	die "Could not read $filename.";
+$s=join("\n",<INFILE>);
+
+$s=~s/>/>\n/gm;
+
+my @lines=split ("\n",$s);
+my $i=0;
+my $is="";
+
+foreach (@lines)
+{
+	if (!/<.*?\/>/)
+	{
+		if (/<\//)
+		{
+			# Closing tag
+			$i--;
+			if ($i<0) {$i=0};
+			$is=indent($i);
+			print "$is$_\n";
+		} else
+		{
+			if (/<(?!\?)/)  # ignore <? ... ?>
+			{
+				# Opening tag
+				print "$is$_\n";
+				$i++;
+				$is=indent($i);
+			} else 
+			{ 
+				# empty lines etc
+				print "$is$_\n"; 
+			}
+		}
+	} else 
+	{ 
+		# Ignor single tags <../>
+		print "$is$_\n"; 
+	}
+}
+print "\n";
+exit;
+
+sub indent()
+{
+	my $size=shift;
+	my $s="";
+	for ($i=0; $i<$size; $i++)
+	{
+		$s=$s."  ";
+	}
+	return $s;
+}

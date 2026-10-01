@@ -1,0 +1,105 @@
+#!/bin/bash
+#
+# Link application bundle to QT as framework
+#
+# written by Uwe Drechsel (c) 2006
+#
+# License GPL 2
+#
+
+APPNAME=vym
+BUNDLE=$APPNAME.app
+FWORKS=$BUNDLE/Contents/Frameworks
+QTDIR=/usr/local/Trolltech/Qt-4.2.0
+QTLIB=$QTDIR/lib
+
+declare -a FWLIST
+
+function cleanup
+{
+	echo ***Cleaning up...
+	rm -rf $BUNDLE
+	make clean
+}
+
+function compile
+{
+	echo ***Compiling...
+	qmake -config release
+	make
+}
+
+function fixLinking 
+{
+	echo  ***Setting identification names...
+	for i in ${FWLIST[@]}
+	do
+		COM="install_name_tool -id @executable_path/../Frameworks/$i.framework/Versions/4/$i $BUNDLE/Contents/Frameworks/$i.framework/Versions/4/$i"
+	done	
+		echo "   $COM"
+		`$COM`
+
+	echo ***Tell dynamic linker where to look for frameworks... 
+	for i in ${FWLIST[@]}
+	do
+		COM="install_name_tool -change $QTLIB/$i.framework/Versions/4/$i @executable_path/../Frameworks/$i.framework/Versions/4/$i $BUNDLE/Contents/MacOs/$APPNAME"
+		echo "   $COM"
+		`$COM`
+	done	
+
+
+	for fw in ${FWLIST[@]}
+	do
+	echo ***Adjust dynamic linking in $fw
+		for i in ` otool -L vym.app/Contents/Frameworks/$fw.framework/$fw | grep Trolltech | sed "s/^.*\///" | sed "s/ .*$//"` 
+		do
+			COM="install_name_tool -change $QTLIB/$i.framework/Versions/4/$i @executable_path/../Frameworks/$i.framework/Versions/4/$i $FWORKS/$fw.framework/$fw"
+			echo "   $COM"
+			`$COM`
+		done	
+	done
+
+}
+
+function copyFrameworks
+{
+	# Copy found frameworks into bundle, preserve symbolic links with -R
+	mkdir -p  $FWORKS
+	for i in ${FWLIST[@]}
+	do
+		echo ***Copying $QTLIB/$i.framework
+		#cp -R $QTLIB/$i.framework $FWORKS
+		rsync -avz $QTLIB/$i.framework $FWORKS --exclude 'Qt*_debug'
+	done	
+}
+
+function copyRessources
+{
+	echo ***Copying ressources
+	mkdir -p $BUNDLE/Contents/Resources
+	cp -r icons flags scripts styles vym.app/Contents/Resources/
+	cp icons/vym.icns $BUNDLE/Contents/Resources
+}
+
+function findFrameworks
+{
+	FWLIST=`otool -L $BUNDLE/Contents/MacOS/$APPNAME  | grep Trolltech | sed "s/^.*\///" | sed "s/ .*$//"`
+	#FWLIST=( Qt3Support QtSql QtNetwork QtXml QtGui QtCore )
+
+	echo ***The following Qt frameworks are needed:
+	for i in ${FWLIST[@]}
+	do
+		echo $i
+	done	
+}	
+
+
+#cleanup
+#compile
+
+
+#findFrameworks
+#copyFrameworks
+#fixLinking
+copyRessources
+

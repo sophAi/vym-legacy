@@ -1,0 +1,145 @@
+#! /bin/bash
+#
+
+set -e  # abort on errors
+shopt -s nullglob  # file globs that don't match expand
+		   # to nothing
+
+#
+# Check if $EDITOR is set, otherwise set to "vi".
+#
+: ${EDITOR:=vi}
+
+#
+# Check for -f option ()
+#
+if [ "$1" = -f ]; then
+    retry_lock=1
+    shift
+fi
+
+#
+# Detect the name of the file to edit
+#
+unset FILE
+
+if [ -n "$1" ]; then
+    if [ -f "$1" ]; then
+	FILE=$1
+    else
+	if [ -d "$1" ]; then
+	    cd $1
+	else
+	    FILE=$(package_name $1).changelog
+	fi
+    fi
+fi
+
+if [ -z "$FILE" ]; then
+    for f in *.changelog; do
+	if [ -n "$FILE" ]; then
+	    FILE=
+	    break
+	fi
+	FILE=$f
+    done
+fi
+
+if [ -z "$FILE" ]; then
+    for f in *.spec; do
+	if [ -n "$FILE" ]; then
+	    FILE=
+	    break
+	fi
+	FILE=$f
+    done
+    if [ -n "$FILE" ]; then
+	FILE=$(package_name $FILE).changelog
+    fi
+fi
+
+if [ -z "$FILE" ]; then
+    echo "usage: ${0##*/} [filename[.changelog]|path [file_with_comment]]"
+    echo "If no <filename> is given, exactly one *.changelog or"
+    echo "*.spec file has to be in the cwd or in <path>."
+    echo
+    exit 1
+fi
+
+#
+# Add domain to username (if it's me ;-)
+#
+user=`whoami`
+if [ $user = "uwedr" ]; then
+	user="$user@suse.de"
+fi
+
+COMMENT_FILE=$2
+
+#
+# Create the lockfile and temporary file.
+#
+lockfile=.${FILE##*/}.lock
+if [ "${FILE/\//}" != "$FILE" ]; then
+    lockfile=${FILE%/*}/.$lockfile
+fi
+
+if [ ! -w "$(dirname "$FILE")" ]; then
+    echo "Write access to directory $(dirname "$FILE") required" >&2
+    exit 1
+fi
+
+if [ -e "$FILE" -a ! -w "$FILE" ]; then
+    echo "Write access to file $FILE required" >&2
+    exit 1
+fi
+
+set -o noclobber
+while ! echo $$@$(hostname -f) 2> /dev/null > $lockfile; do
+    if [ -z "$retry_lock" ]; then
+	echo "$lockfile: Lock by process $(cat $lockfile)" >&2
+	echo "Please remove stale lockfiles manually" >&2
+	exit 1
+    fi
+    echo "$lockfile: Waiting for process $(cat $lockfile) to release lock" >&2
+    sleep 1
+done
+set +o noclobber
+
+tmpfile=$(mktemp /tmp/${0##*/}.XXXXXX)
+trap "rm -f $lockfile $tmpfile" EXIT
+
+#
+# Prepare the working copy and start the editor
+#
+
+{   timestamp=$(LC_ALL=POSIX TZ=Europe/Berlin date)
+    echo "-------------------------------------------------------------------"
+    echo "$timestamp - $user"
+    echo
+    if [ -z "$COMMENT_FILE" ]; then
+	echo "- "
+    else
+	cat $COMMENT_FILE
+    fi
+    echo
+    if [ -f "$FILE" ]; then
+    	cat $FILE
+    fi
+} >> $tmpfile \
+|| exit 1
+
+if [ -z "$COMMENT_FILE" ]; then
+    lines=1
+    CHKSUM_BEFORE=$(md5sum $tmpfile | awk '{print $1}')
+else
+    lines=$(wc -l $COMMENT_FILE | awk '{print $1}')
+    CHKSUM_BEFORE=has_changed
+fi
+
+$EDITOR +$((3+lines)) $tmpfile
+
+if [ "$CHKSUM_BEFORE" = "$(md5sum $tmpfile | awk '{print $1}')" ]; then
+    exit 1
+fi
+cat $tmpfile > $FILE

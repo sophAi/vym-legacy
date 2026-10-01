@@ -1,0 +1,24 @@
+# C++ / Qt build artifacts
+Makefile*
+*.o
+*.a
+*.so
+moc_*
+ui_*
+qrc_*
+.qmake.cache
+.qmake.stash
+
+# Compiled binaries
+vym
+vym-legacy
+
+# Backup and editor files
+*~
+*.swp
+*.bak
+*.orig
+.directory
+
+# Temporary build dirs
+build/
